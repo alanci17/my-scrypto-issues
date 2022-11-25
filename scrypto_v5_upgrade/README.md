@@ -15,16 +15,16 @@ Maybe issue is addressable to new owned component implementation within Scrypto 
 
 This is the Hashmap carrying NFT sale instance info & status that's updated by aforementioned method:
 
-```list_map: HashMap<
-            (ResourceAddress,u128),
-            (
-                Vec<(ResourceAddress,NonFungibleId,FooNFT)>,
+```
+list_map: HashMap<
+	(ResourceAddress,u128),
+        (
+        	Vec<(ResourceAddress,NonFungibleId,FooNFT)>,
                 (u8,Decimal),
                 (Decimal,Decimal,u64,Decimal,u64,u8,u128)		
-            )
-        >
+        )
+>
 ```
-
 -------------------------------------------------------------------------------------------
 # Index  
 -------------------------------------------------------------------------------------------	
@@ -513,29 +513,31 @@ New Entities: 0
 Original Foosquare Blueprint ( first one I tried to update to Scrypto v0.6) had a sligtly different ```list_map``` HashMap, where every selling method 
 managed his own data tuple:
 
-```list_map: HashMap<
-            (ResourceAddress,u128),
-            (
-                Vec<(ResourceAddress,NonFungibleId,RadishNFT)>,
+```
+list_map: HashMap<
+	(ResourceAddress,u128),
+        (
+        	Vec<(ResourceAddress,NonFungibleId,RadishNFT)>,
                 (u8,Decimal),
                 (Decimal,Decimal,u64),					// Normal 
                 (Decimal,Decimal,u64,Decimal,u64),			// Auction
                 (Decimal,Decimal,u64,u8,u64,u128)			// Raffle
-            )
-        >
+        )
+>
 ```
 
 instead of :
 
 
-```list_map: HashMap<
-            (ResourceAddress,u128),
-            (
-                Vec<(ResourceAddress,NonFungibleId,FooNFT)>,
+```
+list_map: HashMap<
+	(ResourceAddress,u128),
+        (
+        	Vec<(ResourceAddress,NonFungibleId,FooNFT)>,
                 (u8,Decimal),
                 (Decimal,Decimal,u64,Decimal,u64,u8,u128)		// Normal & Auction & Raffle
-            )
-        >
+        )
+>
 ```
 With this original configuration, in NFT normal sale mode, ```FooSquare::buy_nft``` method worked, in reverse ```FooSquare::buy_nft_ext``` method doesn't, 
 so when I tried to buy an NFT from an external Component throught component call it triggered a failed transaction.
