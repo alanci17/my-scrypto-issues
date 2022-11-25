@@ -6,8 +6,7 @@ blueprint! {
         // XRD vault.
         collected_xrd: Vault,         
         // Token Hashmap of vaults.                                   
-        token_vaults: HashMap<ResourceAddress, Vault>,      
-        
+        token_vaults: HashMap<ResourceAddress, Vault>,              
         // Token Hashmap with name, symbol, price.              
         token_map: HashMap<ResourceAddress, (String, String, Decimal)>,        
         // metaBadge Hashmap with entry fee level, MetaToken amount & token address.  
@@ -16,12 +15,10 @@ blueprint! {
         meta_map: HashMap<ResourceAddress, (Decimal, Decimal, ResourceAddress)>,         
         // MetaToken Hashmap with MetaToken resource adresses. 
         meta: HashMap<ResourceAddress, MetaToken>,  
-        
         // Badge to mint and burn MetaTokens.                      
         minter_badge: Vault,         
         // Owner badge to determine protocol fee and collect accrued XRD fee.                                     
         owner_badge: ResourceAddress,      
-        
         // Protocol XRD fee variable.                           
         xrd_fee: Decimal,   
         // Amount of accrued XRD protocol fee withdrawed by protocol owner.                                      

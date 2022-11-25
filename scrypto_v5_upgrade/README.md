@@ -13,6 +13,18 @@ algo runs smoothly (```"foo_square.rs"``` file).
 
 Maybe issue is addressable to new owned component implementation within Scrypto v0.5.0 upgrade, or maybe I missed something on the way.
 
+This is the Hashmap carrying NFT sale instance info & status that's updated by aforementioned method:
+
+```list_map: HashMap<
+            (ResourceAddress,u128),
+            (
+                Vec<(ResourceAddress,NonFungibleId,FooNFT)>,
+                (u8,Decimal),
+                (Decimal,Decimal,u64,Decimal,u64,u8,u128)		
+            )
+        >
+```
+
 -------------------------------------------------------------------------------------------
 # Index  
 -------------------------------------------------------------------------------------------	

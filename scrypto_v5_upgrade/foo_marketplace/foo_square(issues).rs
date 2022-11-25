@@ -13,46 +13,45 @@ blueprint! {
         collected_abc: Vault,         
         // NFT Hashmap of vaults.                                   
         nft_vaults: HashMap<ResourceAddress,Vault>,   
-
+        // Token vault inherent to a specific Foo NFT selling instance number
         abc_vaults: HashMap<u128,Vault>,
-
+        // External cloned marketplace component authentication Caller Badge vault
         badge_vaults: HashMap<ResourceAddress,Vault>,
-
         // nft Hashmap with nft data, nft key, nft price. Used to return NFT availability within protocol.
         nft_map: HashMap<ResourceAddress,Vec<(u128,NonFungibleId,Decimal,bool)>>,
-
         // NFT Hashmap with address, total accrued selling amount, NFT & metaNFT keys, NFT accrued selling amount.
         meta_map: HashMap<ResourceAddress,(Decimal,Vec<(NonFungibleId,NonFungibleId,Decimal,u128)>)>,         
         // metanft Hashmap with NFT Address, metaNFT ResourceDef & Data. 
         meta: HashMap<ResourceAddress,ResourceAddress>,  
-
-        ext_mrkt_map: Vec<(ComponentAddress,ResourceAddress,Decimal,ResourceAddress,ResourceAddress)>,
-        
+        // Map of external cloned marketplaces to ensure interoperability between cloned protocols. 
+        // External marketplace component address & caller badge resource address, external marketplace fee,        
+        // dex component resource address, badge resource address to call external marketplaces methods
+        ext_mrkt_map: Vec<(ComponentAddress,ResourceAddress,Decimal,ResourceAddress,ResourceAddress)>,       
         // Badge to mint and burn metaCandies.                      
         minter_badge: Vault,         
         // Owner badge to determine protocol fee and collect accrued abc fee.                                     
         owner_badge: ResourceAddress, 
-
+        // FooSquare protocol Badge resource address
         foo_badge: ResourceAddress, 
-
-        abc_fee: Decimal, 
-
+        // protocol's accrued claimed amount 
         abc_claimed: Decimal,
-
+        // Protocol currency resource address
         currency: ResourceAddress,
-
+        // FooSquare component address
         foo_comp_addr: ComponentAddress,
         // Protocol fee variable.
         fee: Decimal,
-
+        // Maps component containing BuyerBadge maps data relative to different selling instance
+        // modes: normal mode with a "buy proposition" map, auction mode and raffle mode with
+        // relative maps
         maps: MapsComponent,
-
+        // List component unworking 
         list: ListComponent,
-
+        // Abs struct containing relevant data utilized by protocol
         abc: Abc,
-
+        // Demo componentto mint some test NFT 
         foo_farm: FooFarmComponent,
-
+        // NFT selling instance number
         instance_number: u128
     }
 
@@ -92,7 +91,6 @@ blueprint! {
                 minter_badge: Vault::with_bucket(minter_badge),
                 owner_badge: owner_badge.resource_address(),
                 foo_badge: foo_badge.resource_address(),
-                abc_fee:  Decimal::zero(), 
                 abc_claimed: Decimal::zero(),
                 currency,
                 foo_comp_addr: dex,
@@ -282,6 +280,11 @@ blueprint! {
             self.abc_collect(tup.m.3, chk.t.9)
         }
 
+        // Method callable by NFT seller to collect payment received by NFT selling
+        // providing a relative user Badge as reference.
+        // Seller accept buy proposal payment made by buyer, the latter is then able to collect his
+        // NFT. If, in the meantime, a higher proposal has been made, protocol detect it and assign 
+        // NFT withdrawal right accordingly. 
         pub fn collect_buy_prop_payment(&mut self, meta_vec: Vec<Bucket>, sum: Decimal) -> Bucket { 
             let tup = self.check_meta(meta_vec,false,0,0,dec!("0"));               
             let chk = self.status_check(tup.m.3);
@@ -299,6 +302,7 @@ blueprint! {
             output_bckt
         }
 
+        // Collect payment of a Foo NFT selling instance in Auction mode
         pub fn collect_auction_payment(&mut self, meta_nft_bckt_sum: Vec<Bucket>) -> Bucket {                                        
             let tup = self.check_meta(meta_nft_bckt_sum,false,0,0,dec!("0"));
             let chk = self.status_check(tup.m.3);
@@ -314,6 +318,7 @@ blueprint! {
             output_bckt
         }
 
+        // Collect payment of a Foo NFT selling instance Raffle mode
         pub fn collect_raffle_jackpot(&mut self, meta_nft_bckt_sum: Vec<Bucket>) -> Bucket {
             let tup = self.check_meta(meta_nft_bckt_sum,false,0,0,dec!("0"));
             let chk = self.status_check(tup.m.3);
@@ -340,6 +345,7 @@ blueprint! {
             output_bckt
         }
 
+        // Buy an FooNFT. Method callable within external authorized cloned marketplace
         pub fn buy_nft_ext(    
             &mut self,       
             sale_nr: u128,
@@ -362,8 +368,8 @@ blueprint! {
             }
         } 
 
-            // Obtain an exact nft amount in exchange of a maximum abc amount. 
-            // Function swap abc for exact nft.
+        // Obtain an exact nft amount in exchange of a maximum abc amount. 
+        // Function swap abc for exact nft.
         pub fn buy_nft(&mut self, sale_nr: u128, mut abc_bckt: Bucket, bdg_ref: Proof) -> (Vec<Bucket>,Bucket) { 
             let matched = self.nft_match(sale_nr,false);
             assert_eq!(matched.n.0,true);  
@@ -397,6 +403,8 @@ blueprint! {
             (output_vec_bckt,abc_bckt) 
         }
 
+        // Make a buy proposal on a listed Foo NFT selling istance.
+        // Method callable within external authorized cloned marketplace 
         pub fn buy_proposal_ext(
             &mut self, 
             sale_nr: u128,
@@ -421,6 +429,8 @@ blueprint! {
             }          
         } 
 
+        // Make a buy proposal on a listed Foo NFT selling istance.
+        // Method callable within FooSquare protocol
         pub fn buy_proposal(
             &mut self, 
             sale_nr: u128,
@@ -466,6 +476,14 @@ blueprint! {
             (out_bckt,abc_bckt)      
         } 
 
+        // Reclaim a buy proposal on a listed Foo NFT selling istance.
+        // User needs to provide his Buyer Badge as well as his SBT proof if his previously made
+        // buy proposal has been accepted by buyer. Otherwise he's entitled to retire his offer 
+        // if one of next conditions are met:
+        // An higher buy proposal has been made.
+        // Buyer retired Foo NFT from sale.
+        // Buy proposal deadline expired.
+        // Method callable within FooSquare protocol as well as external authorized cloned marketplace
         pub fn reclaim_buy_proposal(&mut self, ex_badge: Bucket) -> Vec<Bucket> {
             let (ex_badge,nmbr,mrkt_addr) = FooSquare::buy_bdg_data(ex_badge);
             if self.badge_in(nmbr,ex_badge.resource_address(),0) {
@@ -515,6 +533,8 @@ blueprint! {
             }          
         }
 
+        // Buy a determined number of tickets on a listed Foo NFT selling istance in raffle mode.
+        // Method callable within external authorized cloned marketplace
         pub fn buy_ticket_ext(
             &mut self, 
             sale_nr: u128,
@@ -538,6 +558,8 @@ blueprint! {
             }          
         } 
 
+        // Buy a determined number of tickets on a listed Foo NFT selling istance in raffle mode.
+        // Method callable within FooSquare protocol
         pub fn buy_ticket(
             &mut self, 
             sale_nr: u128,
@@ -588,6 +610,12 @@ blueprint! {
             (output_bckt,abc_bckt)
         } 
 
+        // Reclaim won Foo NFT, in raffle mode selling istance, providing required buyer badge
+        // containing winner ticket ID.
+        // To verify he's the raffle winner a buyer can call "ask_position" method providing his buyer 
+        // badge or alternatively check "ask_instance" method if he's not the winner one.
+        // If provided badgecontais only loser tickets IDs, protocol burn it.
+        // Method callable within FooSquare protocol as well as external authorized cloned marketplace
         pub fn reclaim_winner_ticket(&mut self, ticket_badge: Bucket) -> Vec<Bucket> { 
             let (ticket_badge,nmbr,mrkt_addr) = FooSquare::raffle_bdg_data(ticket_badge);
             if self.badge_in(nmbr,ticket_badge.resource_address(),2) {
@@ -637,6 +665,8 @@ blueprint! {
             }          
         }
 
+        // Place a bid on a listed Foo NFT selling istance in auction mode.
+        // Method callable within external authorized cloned marketplace
         pub fn place_bid_ext(
             &mut self, 
             sale_nr: u128,
@@ -662,6 +692,8 @@ blueprint! {
             }          
         }   
  
+        // Place a bid on a listed Foo NFT selling istance in auction mode.
+        // Method callable within FooSquare protocol
         pub fn place_bid(
             &mut self, 
             sale_nr: u128,
@@ -724,6 +756,7 @@ blueprint! {
             (output_bckt,abc_bckt,bidder_badge)  
         }
 
+        // reclaim bid bond of a lost or deserted NFT selling auction
         pub fn reclaim_bid_bond(
             &mut self, 
             bidder_badge: Bucket
@@ -755,6 +788,7 @@ blueprint! {
             }          
         }
 
+        // honour a won NFT selling auction paying winner bid
         pub fn pay_winner_bid(&mut self, mut abc_bckt: Bucket, bidder_badge: Bucket) -> (Vec<Bucket>,Bucket) {
             let (bidder_badge,nmbr,mrkt_addr) = FooSquare::buy_bdg_data(bidder_badge);
             if self.nft_match(nmbr,true).n.0 { 
@@ -791,7 +825,7 @@ blueprint! {
             }          
         }
 
-            // Retrieve nft provider position providing a relative userBadge as reference.
+        // Retrieve nft provider position providing a relative userBadge as reference.
         pub fn ask_position(&mut self, badge: Proof) -> Vec<Tab> {
             let badge: ValidatedProof = badge.unsafe_skip_proof_validation();
             let output_vector = self.update_state(0, badge.resource_address());
@@ -802,7 +836,7 @@ blueprint! {
             output_vector
         }
 
-            // Retrieve nft selling status providing a relative instance number as reference.
+        // Retrieve nft selling status providing a relative instance number as reference.
         pub fn ask_instance(&mut self, sale_nr: u128) -> Vec<Tab> { 
             let mut output_vector = self.update_state(sale_nr, ResourceAddress::from(RADIX_TOKEN));  
             for mut tab in output_vector.clone() {
@@ -815,10 +849,10 @@ blueprint! {
  
             output_vector
         }
-
-            // Add an external marketplace address & fee related to an NFT resource address 
-            // to list on sell there too. Mint a Caller Badge to send to that marketplace and relate 
-            // it to other data.         
+    
+        // Add an external marketplace address & fee related to an NFT resource address 
+        // to list on sell there too. Mint a Caller Badge to send to that marketplace and relate 
+        // it to other data.         
         pub fn add_ext_mrkt(
             &mut self, 
             ext_square: ComponentAddress, 
@@ -864,7 +898,7 @@ blueprint! {
             }
         }  
 
-            // Remove external marketplace allowance related a specified NFT resource address. 
+        // Remove external marketplace allowance related a specified NFT resource address. 
         pub fn remove_ext_mrkt(&mut self, ext_square: ComponentAddress) {
             let mut abc_badge = ResourceAddress::from(RADIX_TOKEN);
             let zero = abc_badge;
@@ -884,8 +918,8 @@ blueprint! {
             }
         }
 
-            // Stock External Marketplace badge in relative Vaults Hashmap: FooBadge for 
-            // FooSquare or CallerBadge for others Markeplace Components.
+        // Stock External Marketplace badge in relative Vaults Hashmap: FooBadge for 
+        // FooSquare or CallerBadge for others Markeplace Components.
         pub fn stock_badge(&mut self, ext_square: ComponentAddress, caller_badge: Bucket){
             let mut founded = false;
             for val in self.ext_mrkt_map.iter_mut() {
@@ -904,7 +938,7 @@ blueprint! {
             vault.put(caller_badge);
         }
 
-            // Retrieve external marketplace currency to perform reverse swap
+        // Retrieve external marketplace currency to perform reverse swap
         pub fn out_currency(&mut self, bdg_ref: Proof) -> ResourceAddress { 
             let bdg_ref: ValidatedProof = bdg_ref.unsafe_skip_proof_validation();               
             let extmrkt = self.ext_mrkt_data(self.abc.dex,bdg_ref.resource_address());
@@ -913,8 +947,8 @@ blueprint! {
             extmrkt.tuple.3
         } 
 
-            // Set Foo settings in case of external Marketplace Component implementation & insert
-            // FooSquare in related External Marketplace Map 
+        // Set Foo settings in case of external Marketplace Component implementation & insert
+        // FooSquare in related External Marketplace Map 
         pub fn set_foo_values(                                                                  
             &mut self, 
             foo_fee: Decimal, 
@@ -939,6 +973,7 @@ blueprint! {
             true
         } 
 
+        // Reset Foo Square data values within an external authorized cloned protocol
         pub fn reset_foo_values(
             &mut self, 
             fee: Decimal, 
@@ -957,20 +992,23 @@ blueprint! {
             self.caller_bdg_put(badge);
         }
 
-            // Set Foo Dead Vault Component address & dead share.
+        // Set Foo Dead Vault Component address & dead share.
         pub fn set_dead_values(&mut self, dead_vault: ComponentAddress, dead_share: Decimal) {      
             assert!(dead_share <= Decimal::from(100)," Max allowed value is 100 ");
             (self.abc.dead_vault,self.abc.dead_share) = (dead_vault,dead_share);
             dead_values(self.abc.dead_vault,self.abc.dead_share);
         }
 
-            // Set protocol fee function whom only protocol owner can succesfully call.
+        // Set protocol fee function whom only protocol owner can succesfully call.
         pub fn set_fee(&mut self, prtcl_fee: Decimal) {
             assert!(prtcl_fee >= dec!("0") && prtcl_fee <= dec!("10")," delta fee 0:10 ");
             self.fee = prtcl_fee;
             protocol_fee(self.fee);
         }
 
+        // Set auction deadline, buy proposal deadline and last bid deadline aka the number of 
+        // epochs an auction or a raffle instances are extended whenever a bid or a ticket sell of a
+        // determinated amount has occurred within ultimate available epoch.
         pub fn set_deadlines(&mut self, auction: u64, last_bid_deadline: u64, buy_proposal: u64) {
             assert!(last_bid_deadline <= auction/10," Please lower last bid deadline ");
             self.abc.auction_dl = auction;    
@@ -979,6 +1017,7 @@ blueprint! {
             deadlines(self.abc.auction_dl,self.abc.last_bid_dl,self.abc.buy_prop_dl);
         } 
 
+        // Set Foo Square component address
         pub fn set_comp_addr(&mut self){
             self.foo_comp_addr = Runtime::actor().as_component().0;
         }
@@ -1022,6 +1061,8 @@ blueprint! {
                 out_currency(ext_mrkt,bdg_bckt_ref)
             } 
 
+            // If required by conditions swap tokens on an external DEX, otherwise return immutate 
+            // input resources.
             fn bckt_fx(&mut self, min: Decimal, ad: ResourceAddress, d: ComponentAddress, b: Bucket) -> Bucket {
                 if ad != b.resource_address().clone() {
                     self.swap_fx(min, ad, d, b)
@@ -1030,6 +1071,8 @@ blueprint! {
                 }
             }
 
+            // If required by conditions swap tokens on an external DEX, otherwise return immutate 
+            // input resources.
             fn swap(&mut self, em: ExtMrkt, mut vb: Vec<Bucket>, dex: ComponentAddress) -> Vec<Bucket> {
                 if vb.get(0).unwrap().resource_address() == em.tuple.3 {    
                     let bckt = self.swap_fx(dec!("0"), self.currency, dex, vb.pop().unwrap());            
@@ -1060,6 +1103,10 @@ blueprint! {
                 (extmrkt,caller_badge,self.abc.dex.clone())
             }
 
+            // Internal method invoked to take a specific Caller Badge from related component 
+            // vaults map and return it with other relevant data like external marketplace 
+            // component address & currency. Used to perform buy/selling Foo NFT operations via
+            // external component call. 
             fn check_rec(&mut self, mrkt_addr: ComponentAddress) -> (ExtMrkt,ComponentAddress) {          
                 let extmrkt = self.ext_mrkt_data(mrkt_addr,ResourceAddress::from(RADIX_TOKEN));
                 let caller_badge = self.caller_bdg_take(extmrkt.tuple.5);
@@ -1068,6 +1115,10 @@ blueprint! {
                 (extmrkt,self.abc.dex.clone())
             }
 
+            // Verify exact correspondence between provided metaFooNFT and related FooNFT 
+            // and returns a tuple with useful data to succesfully perform operations like
+            // unstock unsold Foo NFT, modify instance prices, restart auction and raffle instances,
+            // collect ordinary sale payments, buy proposals, auction payments, raffle jackpots.
             fn check_meta( 
                 &mut self,
                 meta_nft_bckt_sum: Vec<Bucket>,
@@ -1212,6 +1263,8 @@ blueprint! {
                 CheckMeta { m: output_tuple }
             }
 
+            // Given a FooNFT selling instance number, method retrieve resource addresses and related ID
+            // of FooNFTs associated with given instance.
             fn check_meta_id(
                 &mut self,
                 number: u128,
@@ -1280,6 +1333,10 @@ blueprint! {
                 CheckTuple { t: tup.t }
             }
 
+            // Update NFT selling instance status within Foo NFT selling instance data Hashmap.
+            // Method needs to be internally call by any other method able to modify selling instance 
+            // conditions to reflect NFT selling instance actual status in terms of time and triggering 
+            // his state transition at occurence.
             fn update_state(&mut self, nr: u128, bdg: ResourceAddress) -> Vec<Tab> { 
                 let mut output_vec: Vec<Tab> = Vec::new();
                 let (v,nmbr_vec,switch_vec,tckt) = self.list.update(nr,bdg,self.abc.auction_dl);
@@ -1308,11 +1365,13 @@ blueprint! {
                 }
             }
 
+            // Retrieve data stored within a provided Buyer NFT Badge
             fn buy_bdg_data(nft: Bucket) -> (Bucket,u128,ComponentAddress) {
                 let nft_data: Mode = nft.non_fungible().data();
                 (nft,nft_data.instance_nmbr,nft_data.mrkt_addr)
             }
             
+            // Retrieve data stored within a provided Raffle Buyer NFT Badge
             fn raffle_bdg_data(nft: Bucket) -> (Bucket,u128,ComponentAddress) {
                 let nft_data: TicketID = nft.non_fungible().data();
                 (nft,nft_data.instance_nmbr,nft_data.mrkt_addr)
@@ -1324,6 +1383,9 @@ blueprint! {
                 self.list.switch_badge(bdg,flag,nmbr,profit);
             }
 
+            // Determine Foo NFT buying/selling transaction amounts, send correspetives into
+            // protocol's vault, swap and send correspetives to related external cloned protocols,
+            // send an academy share to Academy component vault
             fn take_fee(
                 &mut self,
                 sale_nr: u128,
@@ -1415,6 +1477,7 @@ blueprint! {
                 }
             } 
 
+            // Put protocol's currency collected tokens in vault
             fn abc_put(&mut self, sale_nr: u128, bckt: Bucket){
                 match self.abc_vaults.get_mut(&sale_nr) {
                     Some(vault) => vault.put(bckt),
@@ -1422,6 +1485,7 @@ blueprint! {
                 }
             } 
 
+            // Take protocol's currency collected tokens from vault
             fn abc_collect(&mut self, sale_nr: u128, amnt: Decimal) -> Bucket {
                 let output_abc: Bucket;
                 match self.abc_vaults.get_mut(&sale_nr) {
@@ -1459,6 +1523,7 @@ blueprint! {
                 assert!(answer," Sale instance unfounded ! ");
             } 
 
+            // Pick up a raffle winner of a determinated Foo NFT selling instance
             fn raffle_winner(&mut self, nmbr: u128, tickets: u8) -> u128 { 
                 let tckts = usize::from(tickets); 
                 let hash = Runtime::transaction_hash().to_string();
@@ -1496,6 +1561,7 @@ blueprint! {
                 NftMatch { n: output_tuple}
             } 
 
+            // Burn a bucket
             fn bckt_burn(&mut self, bckt: Bucket) {
                 self.minter_badge.authorize(|| {bckt.burn()});
             }
@@ -1541,6 +1607,7 @@ blueprint! {
                 self.maps.badge_in(nmbr,bdg,j)
             }
 
+            // erase NFT data from map
             fn erase_map_entry(&mut self, nmbr: u128, a: u64, b: u8) {
 
                 self.maps.erase_map_entry(nmbr,a,b)
@@ -1654,6 +1721,7 @@ blueprint! {
                 }
             }
 
+            // Generate raffle tickets ID 
             fn gen_ticket_id(&self, amnt: Decimal) -> Vec<u128> {
                 let mut i = dec!("0");
                 let mut vec_id = Vec::new();
@@ -1669,6 +1737,8 @@ blueprint! {
                 vec_id
             }   
 
+            // Create a new meta Foo NFT resource linked to a new Foo NFT resource provided to
+            // protocol
             fn add_meta_nft(
                 &mut self, 
                 eco: String,

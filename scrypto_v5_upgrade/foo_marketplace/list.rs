@@ -33,12 +33,16 @@ blueprint! {
             .instantiate()
         }
 
+        // Insert new Foo NFT selling instance data within Foo NFT selling instance data Hashmap
+        // whenever a new selling instance is started
         pub fn map_insert(&mut self, tab: Tab) {
             let tup_one = tab.tuple.0;
             let tup_two = tab.tuple.1;
             self.list_map.insert(tup_one,tup_two);
         }
 
+        // Retrieve instance number from related map invoked by seller's methods.
+        // Chech made within Foo NFT selling instance data Hashmap.
         pub fn check_status(&mut self, nmbr: u128, flag: u8) {
             for (key,value) in self.list_map.iter() {
                 if key.1 == nmbr {
@@ -52,6 +56,8 @@ blueprint! {
             }
         }
 
+        // Switch Badge addresses data between buyer/seller whenever a buy proposal has been accepted
+        // or a raffle jackpot has been collected within Foo NFT selling instance data Hashmap.
         pub fn switch_badge(&mut self, bdg: ResourceAddress, flag: u8, nmbr: u128, profit: Decimal){
             let tab = Tab::new();
             let mut tup_two = tab.tuple.1;
@@ -73,6 +79,7 @@ blueprint! {
             self.list_map.insert(tup_one,tup_two);
         } 
 
+        // Check a badge existence within Foo NFT selling instance data Hashmap.
         pub fn check_badge(&mut self, bdg_addr: ResourceAddress) -> bool {                   
             for (key,_value) in self.list_map.iter() {
                 if key.0 == bdg_addr {
@@ -82,6 +89,7 @@ blueprint! {
             false
         } 
 
+        // Retrieve raffle NFT winner within Foo NFT selling instance data Hashmap.
         pub fn raffle_winner(&mut self, nmbr: u128, val: u128) {
             for (key,value) in self.list_map.iter_mut() { 
                 if key.1 == nmbr {
@@ -90,6 +98,10 @@ blueprint! {
             }
         }
 
+        // Update NFT selling instance status within Foo NFT selling instance data Hashmap.
+        // Method needs to be internally call by any other method able to modify selling instance 
+        // conditions to reflect NFT selling instance actual status in terms of time and triggering 
+        // his state transition at occurence.
         pub fn update(&mut self, nr: u128, bdg: ResourceAddress, dl: u64) -> (Vec<Tab>,Vec<u128>,Vec<u128>,u8) { 
             let mut v: Vec<Tab> = Vec::new();
             let mut nmbr_vec: Vec<u128> = Vec::new();   
@@ -185,6 +197,8 @@ blueprint! {
             total_tckt
         }
 
+        // Update NFT selling instance status within Foo NFT selling instance data Hashmap. 
+        // Foo NFT selling instance in normal mode
         pub fn buy_prop(&mut self, nmbr: u128, prop: Decimal, endtime: u64) -> (u64,u8) {
             let mut founded = false;
             let end = Runtime::current_epoch()+endtime;         
@@ -208,6 +222,8 @@ blueprint! {
             (end,flag)
         }
 
+        // Update NFT selling instance status within Foo NFT selling instance data Hashmap. 
+        // Foo NFT selling instance in auction mode
         pub fn place_bid(&mut self, nmbr: u128, bid: Decimal, new_end: bool) -> bool {
             let mut wave: bool = false;
             for (key,value) in self.list_map.iter_mut() {
@@ -230,6 +246,8 @@ blueprint! {
             wave
         }
 
+        // Update NFT selling instance status within Foo NFT selling instance data Hashmap. 
+        // Foo NFT selling instance retired, "unstock_nft" method called by NFT seller.
         pub fn unstock(&mut self, nr: u128) {
             for (key,value) in self.list_map.iter_mut() {
                 if key.1 == nr {
@@ -239,6 +257,8 @@ blueprint! {
             }
         }
 
+        // Update NFT selling instance status within Foo NFT selling instance data Hashmap. 
+        // Foo NFT selling instance in auction mode
         pub fn pay_win_bid(&mut self, nmbr: u128, end: u64) -> Decimal {
             let mut rest = dec!("0");
             let mut wave = false;
